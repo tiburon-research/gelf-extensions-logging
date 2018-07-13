@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>0.1.0</VersionPrefix>
-    <TargetFrameworks>netstandard2.0;netstandard1.3</TargetFrameworks>
+    <PackageId>Tiburon.Gelf.Extensions.Logging</PackageId>
+    <VersionPrefix>0.1.4</VersionPrefix>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <PackageProjectUrl>https://github.com/mattwcole/gelf-extensions-logging</PackageProjectUrl>
     <RepositoryUrl>https://github.com/mattwcole/gelf-extensions-logging</RepositoryUrl>
     <Copyright>2017 Matt Cole</Copyright>

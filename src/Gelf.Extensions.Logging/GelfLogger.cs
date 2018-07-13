@@ -43,10 +43,21 @@ namespace Gelf.Extensions.Logging
                 .Concat(GetScopeAdditionalFields())
                 .Concat(GetStateAdditionalFields(state));
 
+            string host;
+            try
+            {
+                var additionalFieldSource = additionalFields.First(x => x.Key == "js_source");
+                host = additionalFieldSource.Value.ToString();
+            }
+            catch
+            {
+                host = _options.LogSource;
+            }
+
             var message = new GelfMessage
             {
                 ShortMessage = formatter(state, exception),
-                Host = _options.LogSource,
+                Host = host,
                 Level = GetLevel(logLevel),
                 Timestamp = GetTimestamp(),
                 Logger = _name,
