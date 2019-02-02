@@ -23,12 +23,20 @@ namespace Gelf.Extensions.Logging
                 BaseAddress = uriBuilder.Uri,
                 Timeout = options.HttpTimeout
             };
+
+            if (options.HttpHeaders != null)
+            {
+                foreach (var header in options.HttpHeaders)
+                {
+                    _httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+                }
+            }
         }
 
         public async Task SendMessageAsync(GelfMessage message)
         {
             var content = new StringContent(message.ToJson(), Encoding.UTF8, "application/json");
-            var result = await _httpClient.PostAsync("gelf", content).ConfigureAwait(false);
+            var result = await _httpClient.PostAsync("gelf", content);
             result.EnsureSuccessStatusCode();
         }
 

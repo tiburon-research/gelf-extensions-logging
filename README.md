@@ -11,47 +11,56 @@ The following examples are for ASP.NET Core. The [samples](/samples) directory c
 In `Program.cs`, import the `LoggingBuilder.AddGelf()` extension method from `Gelf.Extensions.Logging` and add the following to your `WebHost` configuration.
 
 ```csharp
-public static void Main(string[] args)
-{
-    var webHost = new WebHostBuilder()
-        ...
-        .ConfigureLogging((context, builder) =>
-        {
-            builder.AddConfiguration(context.Configuration.GetSection("Logging"))
-                .AddConsole()
-                .AddDebug()
-                .AddGelf(options =>
-                {
-                    options.Host = "graylog-hostname";
-                    options.LogSource = "application-name";
-                });
-        })
-        .Build();
+var webHost = WebHost
+    .CreateDefaultBuilder(args)
+    .UseStartup<Startup>()
+    .ConfigureLogging((context, builder) =>
+    {
+        builder.AddConfiguration(context.Configuration.GetSection("Logging"))
+            .AddConsole()
+            .AddDebug()
+            .AddGelf(options =>
+            {
+                // Optional customisation applied on top of settings in Logging:GELF configuration section.
+                options.LogSource = context.HostingEnvironment.ApplicationName;
+                options.AdditionalFields["machine_name"] = Environment.MachineName;
+                options.AdditionalFields["app_version"] = Assembly.GetEntryAssembly()
+                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+            });
+    })
+    .Build();
+```
 
-    ...
+Logger options are taken from the "GELF" provider section in `appsettings.json` in the same way as other providers. These can be customised further in code as in the above example.
+
+```json5
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Error"
+    },
+    "Console": {
+      "LogLevel": {
+        "Default": "Debug"
+      }
+    },
+    "GELF": {
+      "Host": "localhost",
+      "Port": 12201,    // Not required if using default 12201.
+      "LogSource": "my-app-name",   // Required if not set in code.
+      "AdditionalFields": {     // Optional fields added to all logs.
+        "project_name": "my-project-name"
+      },
+      "LogLevel": {
+        "Default": "Information",
+        "Some.Namespace": "Debug"
+      }
+    }
+  }
 }
 ```
 
-You can then configure the "GELF" logger in `appsettings.json` in the same way as other providers. If you would prefer to read the `GelfLoggerOptions` from `appsettings.json` as well you can do so using the parameterless overload of `AddGelf()`, configuring `GelfLoggerOptions` with `IServiceProvider.Configure<GelfLoggerOptions>()`.
-
-```csharp
-public static void Main(string[] args)
-{
-    var webHost = new WebHostBuilder()
-        ...
-        .ConfigureLogging((context, builder) =>
-        {
-            builder.Services.Configure<GelfLoggerOptions>(context.Configuration.GetSection("Graylog"));
-            builder.AddConfiguration(context.Configuration.GetSection("Logging"))
-                .AddConsole()
-                .AddDebug()
-                .AddGelf();
-        })
-        .Build();
-
-    ...
-}
-```
+For a full list of options e.g. UDP/HTTP(S) settings, see [`GelfLoggerOptions`](src/Gelf.Extensions.Logging/GelfLoggerOptions.cs).
 
 ### ASP.NET Core 1.x
 
@@ -65,7 +74,7 @@ public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
         .AddDebug()
         .AddGelf(new GelfLoggerOptions
         {
-            Host = "graylog-hostname",
+            Host = "localhost",
             LogSource = "application-name",
             LogLevel = LogLevel.Information
         });
@@ -97,7 +106,7 @@ var options = new GelfLoggerOptions
 
 #### Scoped Fields
 
-Log scopes can also be used to attach fields to a group of related logs. Create a log scope with a [`ValueTuple<string, string>`](https://blogs.msdn.microsoft.com/dotnet/2017/03/09/new-features-in-c-7-0/), `ValueTuple<string, int/byte/double>` (or any other numeric value) or `Dictionary<string, object>` to do so. _Note that any other types passed to `BeginScope()` will be ignored, including `Dictionary<string, string>` and `ValueTuple<string, object>`._
+Log scopes can also be used to attach fields to a group of related logs. Create a log scope with a [`ValueTuple<string, string>`](https://blogs.msdn.microsoft.com/dotnet/2017/03/09/new-features-in-c-7-0/), `ValueTuple<string, int/byte/double>` (or any other numeric value) or `Dictionary<string, object>` to do so. _Note that any other types passed to `BeginScope()` will be ignored, including `Dictionary<string, string>`._
 
 ```csharp
 using (_logger.BeginScope(("correlation_id", correlationId)))
@@ -140,4 +149,4 @@ This repository contains a Docker Compose file that can be used for creating loc
 
 ## Contributing
 
-Pull requests welcome! In order to run tests, first run `docker-compose up` to create the Graylog stack. Existing tests log messages and use the Graylog API to assert that they have been sent correctly. A UDP input will be created as part of the test setup (if not already present), so there is no need to create one manually. Build and tests are run on CI in Docker, meaning it is possible to run the build locally in identical conditions using `docker-compose -f docker-compose.ci.build.yml -f docker-compose.yml up --abort-on-container-exit`.
+Pull requests welcome! In order to run tests, first run `docker-compose up` to create the Graylog stack. Existing tests log messages and use the Graylog API to assert that they have been sent correctly. A UDP input will be created as part of the test setup (if not already present), so there is no need to create one manually. Build and tests are run on CI in Docker, meaning it is possible to run the build locally under identical conditions using `docker-compose -f docker-compose.ci.build.yml -f docker-compose.yml up --abort-on-container-exit`.
